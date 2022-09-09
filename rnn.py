@@ -6,6 +6,7 @@ import numpy as np
 #self.h acts as the hidden state at t-1
 class RNN:
     def __init__(self, input_size:int, hidden_size:int, output_size:int, rollout:int, lr:float):
+        print(f"input size: {input_size}")
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -19,8 +20,7 @@ class RNN:
 
     def step(self, x):
         self.h = (x.dot(self.W_xh) + self.W_hh(self.h)).tanh()
-        print("this:")
-        print(self.W_hh(self.h).shape)
+        print("step")
         y = self.W_hy(self.h)
         return y
 
@@ -83,13 +83,15 @@ while True:
     loss = 0
     for x,t in zip(inputs,targets):
         out = model.step(charToTen(x))
+        print("complete forward pass")
         e = (out - charToTen(t)) * Tensor([[1.0]]) #times one is dumb hack to change shape from nx to nx1
         loss += e.dot(e).mean() #mse, dot with self == square
         optim.zero_grad()
-        print(loss.deepwalk())
-        exit()
+        #print(loss.deepwalk())
+        #exit()
         loss.backward()
         optim.step()
+        print("went")
     p += seq_len
     n += 1
 
