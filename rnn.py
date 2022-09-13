@@ -19,8 +19,8 @@ class RNN:
         self.h = Tensor.zeros(hidden_size) #the hidden state that we pass to the next iteration
 
     def step(self, x):
+        print(f"self.h values: {self.h.numpy()}")
         self.h = (x.dot(self.W_xh) + self.W_hh(self.h)).tanh()
-        print("step")
         y = self.W_hy(self.h)
         return y
 
@@ -42,27 +42,29 @@ def sample(h:Tensor, seed_letter:str, out_len:int):
 #take model output and get predicted character
 def outTenToChar(out:Tensor):
     preds = np.exp(out.numpy()) / np.sum(np.exp(out.numpy()))
-    print(preds.shape)
     idx = np.random.choice(range(vocab_size), p=preds.ravel())
     return idx_to_char[idx]
-
-raw_data = open('input2.txt', 'r').read()
-words = raw_data.split()
 
 def no_remove(x):
     if not (x[0:4] == "http" or x[0] == '<'): return True
 
+#data
+raw_data = open('input2.txt', 'r').read()
+words = raw_data.split()
 trimmed = list(filter(no_remove, words))
 data:str = ' '.join(trimmed) #giant string
-
 chars = list(set(data))
 data_size, vocab_size = len(data), len(chars)
+#maps from char to their respective number reps
 char_to_idx = { ch:i for i,ch in enumerate(chars) }
 idx_to_char = { i:ch for i,ch in enumerate(chars) }
 
-hidden_size =7
-seq_len = 2
+#hyperparameters
+hidden_size = 2
+seq_len = 3
 lr = 1e-1
+
+prev_state = Tensor.zeros(hidden_size)
 
 model = RNN(vocab_size, hidden_size, vocab_size, seq_len, lr)
 tens_to_track = [model.W_xh, model.W_hh.weight, model.W_hh.bias, model.W_hy.weight, model.W_hy.bias]
@@ -76,23 +78,15 @@ while True:
         p = 0
     inputs = [ch for ch in data[p:p+seq_len]]
     targets = [ch for ch in data[p+1:p+seq_len+1]] #target is the next letter
-    #targets.append('a')
-    print(inputs)
-    print(targets)
-
-    loss = 0
+    loss = Tensor.zeros(1)
     for x,t in zip(inputs,targets):
         out = model.step(charToTen(x))
-        print("complete forward pass")
-        e = (out - charToTen(t)) * Tensor([[1.0]]) #times one is dumb hack to change shape from nx to nx1
+        probs = (out/(out.exp().sum())).exp()
+        e = (probs - charToTen(t)) * Tensor.ones(1,1)
         loss += e.dot(e).mean() #mse, dot with self == square
-        optim.zero_grad()
-        #print(loss.deepwalk())
-        #exit()
-        loss.backward()
-        optim.step()
-        print("went")
+    optim.zero_grad()
+    print(n)
+    loss.backward()
+    optim.step()
     p += seq_len
     n += 1
-
-    exit()
